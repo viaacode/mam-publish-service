@@ -36,6 +36,11 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
                 <flow-ref name="publishResponse" doc:name="publishResponse"/>
                 <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
             </catch-exception-strategy>
+            <catch-exception-strategy doc:name="Catch Exception Strategy">
+            	<set-variable variableName="message" value="Failed to process message" doc:name="Set message"/>
+                <flow-ref name="publishResponse" doc:name="publishResponse"/>
+                <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
+            </catch-exception-strategy>
         </choice-exception-strategy>
     </flow>
     <sub-flow name="parseMessageSubFlow">
