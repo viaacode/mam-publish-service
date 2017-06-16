@@ -18,7 +18,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
         	responseTimeout="10000"
         	connector-ref="InboundAMQPConnector"
         	doc:name="AMQP-0-9"/>
-        <flow-ref name="parseMessageFlow" doc:name="parseMessageFlow"/>
+        <flow-ref name="parseMessageSubFlow" doc:name="parseMessageSubFlow"/>
         <flow-ref name="publishCallFlow" doc:name="publishCallFlow"/>
         <set-variable variableName="outcome" value="success" doc:name="Set outcome"/>
         <flow-ref name="publishResponse" doc:name="publishResponse"/>
@@ -38,7 +38,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
             </catch-exception-strategy>
         </choice-exception-strategy>
     </flow>
-    <flow name="parseMessageFlow" processingStrategy="synchronous">
+    <sub-flow name="parseMessageSubFlow">
         <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
         <set-variable variableName="originalMessage" value="#[payload]" doc:name="Set originalMessage"/>
         <set-variable variableName="type" value="request" doc:name="Set type"/>
@@ -55,7 +55,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
                 <expression-filter expression="#[flowVars.cp != null &amp;&amp; !flowVars.cp.isEmpty()]"/>
             </and-filter>
         </message-filter>
-    </flow>
+    </sub-flow>
     <sub-flow name="publishCallFlow">
         <set-variable variableName="basic_credentials" value="#[&quot;viaa@&quot; + flowVars.cp + ':' + '${mh.password}']" doc:name="Set basic_credentials"/>
         <set-attachment attachmentName="value" value="true" contentType="application/json" doc:name="Attachment"/>
