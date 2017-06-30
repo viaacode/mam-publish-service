@@ -68,17 +68,26 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
             <http:request-builder>
                 <http:header headerName="Authorization" value="#['Basic ' + org.apache.commons.codec.binary.Base64.encodeBase64String(flowVars.basic_credentials.getBytes())]"/>
             </http:request-builder>
-            <http:success-status-code-validator values="204,403"/>
+            <http:success-status-code-validator values="204"/>
         </http:request>
-        <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
-        <choice doc:name="Is item already published?">
-            <when expression="#[payload.message == &quot;Item is already published&quot;]">
-                <expression-component doc:name="Do nothing"><![CDATA[// Do nothing]]></expression-component>
-            </when>
-            <otherwise>
+        <choice doc:name="Was any data returned?">
+            <when expression="#[message.inboundProperties['http.status'] == 204]">
                 <until-successful maxRetries="5" millisBetweenRetries="5000" synchronous="true" doc:name="Until Successful">
                     <flow-ref name="checkIfPublishedSubFlow" doc:name="checkIfPublishedSubFlow"/>
                 </until-successful>
+            </when>
+            <otherwise>
+                <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
+                <choice doc:name="Is item already published?">
+                    <when expression="#[payload.message == &quot;Item is already published&quot;]">
+                        <expression-component doc:name="Do nothing"><![CDATA[// Do nothing]]></expression-component>
+                    </when>
+                    <otherwise>
+                        <until-successful maxRetries="5" millisBetweenRetries="5000" synchronous="true" doc:name="Until Successful">
+                            <flow-ref name="checkIfPublishedSubFlow" doc:name="checkIfPublishedSubFlow"/>
+                        </until-successful>
+                    </otherwise>
+                </choice>
             </otherwise>
         </choice>
         <logger level="INFO" doc:name="Logger"/>
@@ -89,7 +98,6 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
             <http:request-builder>
                 <http:header headerName="Authorization" value="#['Basic ' + org.apache.commons.codec.binary.Base64.encodeBase64String(flowVars.basic_credentials.getBytes())]"/>
             </http:request-builder>
-            <http:success-status-code-validator values="404"/>
         </http:request>
         <dw:transform-message doc:name="Transform Message">
             <dw:input-payload doc:sample="sample_data/json_1.json"/>
