@@ -32,7 +32,8 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
                 <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
             </catch-exception-strategy>
             <catch-exception-strategy when="#[exception.causedBy(org.mule.api.routing.RoutingException)]" doc:name="Catch Exception Strategy">
-                <set-variable variableName="message" value="Failed to publish fragment" doc:name="Set message"/>
+                <set-variable variableName="message" value="#[exception.toString()]" doc:name="Set message"/>
+                <set-variable variableName="exceptionPayload" value="#[message.payloadAs(java.lang.String)]" doc:name="Set exceptionPayload"/>
                 <flow-ref name="publishResponse" doc:name="publishResponse"/>
                 <amqp:acknowledge-message doc:name="AMQP-0-9 Acknowledge Message"/>
             </catch-exception-strategy>
@@ -117,19 +118,6 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
         </choice>
     </sub-flow>
     <sub-flow name="publishResponse">
-        <dw:transform-message doc:name="Make queue creation request">
-            <dw:set-payload><![CDATA[%dw 1.0
-%output application/json
----
-{
-	"auto_delete":false,
-	"durable":true,
-	"arguments":{}
-}]]></dw:set-payload>
-        </dw:transform-message>
-        <until-successful maxRetries="50" millisBetweenRetries="5000" synchronous="true" doc:name="Until Successful">
-            <http:request config-ref="RabbitMQAPI" path="/queues/#[java.net.URLEncoder.encode('${rabbit.vhost}', &quot;UTF-8&quot;)]/${rabbit.responsequeue}" method="PUT" doc:name="Create queue"/>
-        </until-successful>
         <dw:transform-message doc:name="Make response">
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
@@ -145,7 +133,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
         <set-variable variableName="type" value="response" doc:name="Set type"/>
         <scatter-gather doc:name="Scatter-Gather">
             <until-successful maxRetries="50" millisBetweenRetries="5000" doc:name="Until Successful" synchronous="true">
-                <amqp:outbound-endpoint queueName="${rabbit.responsequeue}" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="Publish response"/>
+                <amqp:outbound-endpoint queueName="${rabbit.responsequeue}" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="Publish response" queueDurable="true"/>
             </until-successful>
             <flow-ref name="esPost" doc:name="esPost"/>
         </scatter-gather>
