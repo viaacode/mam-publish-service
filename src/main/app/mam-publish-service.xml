@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:amqp="http://www.mulesoft.org/schema/mule/amqp" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+<mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:amqp="http://www.mulesoft.org/schema/mule/amqp" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:spring="http://www.springframework.org/schema/beans" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
@@ -9,7 +9,8 @@ http://www.mulesoft.org/schema/mule/amqp http://www.mulesoft.org/schema/mule/amq
 http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
-http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
     
     <flow name="mhPublishServiceListenerFlow" initialState="started">
         <amqp:inbound-endpoint
@@ -66,15 +67,17 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
     <sub-flow name="publishCallFlow">
         <set-variable variableName="basic_credentials" value="#[&quot;viaa@&quot; + flowVars.cp + ':' + '${mh.password}']" doc:name="Set basic_credentials"/>
         <set-attachment attachmentName="value" value="true" contentType="application/json" doc:name="Attachment"/>
-        <http:request config-ref="MediahavenAPI" path="/#[flowVars.fragment_id]/publish" method="POST" doc:name="Publish asset">
-            <http:request-builder>
-                <http:header headerName="Authorization" value="#['Basic ' + org.apache.commons.codec.binary.Base64.encodeBase64String(flowVars.basic_credentials.getBytes())]"/>
-            </http:request-builder>
-            <http:success-status-code-validator values="204,403"/>
-        </http:request>
+        <until-successful maxRetries="5" millisBetweenRetries="5000" synchronous="true" doc:name="Until Successful">
+            <http:request config-ref="MediahavenAPI" path="/#[flowVars.fragment_id]/publish" method="POST" doc:name="Publish asset">
+                <http:request-builder>
+                    <http:header headerName="Authorization" value="#['Basic ' + org.apache.commons.codec.binary.Base64.encodeBase64String(flowVars.basic_credentials.getBytes())]"/>
+                </http:request-builder>
+                <http:success-status-code-validator values="204,403,400"/>
+            </http:request>
+        </until-successful>
         <choice doc:name="Was any data returned?">
             <when expression="#[message.inboundProperties['http.status'] == 204]">
-                <until-successful maxRetries="5" millisBetweenRetries="5000" synchronous="true" doc:name="Until Successful">
+                <until-successful maxRetries="50" millisBetweenRetries="1000" synchronous="true" doc:name="Until Successful">
                     <flow-ref name="checkIfPublishedSubFlow" doc:name="checkIfPublishedSubFlow"/>
                 </until-successful>
             </when>
@@ -85,7 +88,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
                         <expression-component doc:name="Do nothing"><![CDATA[// Do nothing]]></expression-component>
                     </when>
                     <otherwise>
-                        <expression-component doc:name="Expression"><![CDATA[throw new org.mule.module.http.internal.request.ResponseValidatorException("Response code " + message.inboundProperties['http.status'] + " mapped as failure. Message payload is of type: BufferInputStream");]]></expression-component>
+                        <expression-component doc:name="Expression"><![CDATA[throw new org.mule.module.http.internal.request.ResponseValidatorException("Response code " + message.inboundProperties.'http.status' + " mapped as failure. Message payload is of type: BufferInputStream");]]></expression-component>
                     </otherwise>
                 </choice>
             </otherwise>
@@ -130,9 +133,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
         <byte-array-to-string-transformer doc:name="Byte Array to String"/>
         <set-variable variableName="type" value="response" doc:name="Set type"/>
         <scatter-gather doc:name="Scatter-Gather">
-            <until-successful maxRetries="50" millisBetweenRetries="5000" doc:name="Until Successful" synchronous="true">
-                <amqp:outbound-endpoint queueName="${rabbit.responsequeue}" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="Publish response" queueDurable="true"/>
-            </until-successful>
+            <amqp:outbound-endpoint queueName="${rabbit.responsequeue}" queueDurable="true" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="Publish response"/>
             <flow-ref name="esPost" doc:name="esPost"/>
         </scatter-gather>
         <set-payload value="#[&quot;&quot;]" doc:name="Set Payload"/>
