@@ -144,7 +144,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
         <byte-array-to-string-transformer doc:name="Byte Array to String"/>
         <set-variable variableName="type" value="response" doc:name="Set type"/>
         <scatter-gather doc:name="Scatter-Gather">
-            <until-successful maxRetries="50" millisBetweenRetries="5000" doc:name="Until Successful">
+            <until-successful maxRetries="50" millisBetweenRetries="5000" doc:name="Until Successful" synchronous="true">
                 <amqp:outbound-endpoint queueName="${rabbit.responsequeue}" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="Publish response"/>
             </until-successful>
             <flow-ref name="esPost" doc:name="esPost"/>
