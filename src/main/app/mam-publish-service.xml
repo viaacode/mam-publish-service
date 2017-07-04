@@ -116,7 +116,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
             </otherwise>
         </choice>
     </sub-flow>
-    <flow name="publishResponse" processingStrategy="synchronous">
+    <sub-flow name="publishResponse">
         <dw:transform-message doc:name="Make queue creation request">
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
@@ -127,7 +127,9 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
 	"arguments":{}
 }]]></dw:set-payload>
         </dw:transform-message>
-        <http:request config-ref="RabbitMQAPI" path="/queues/#[java.net.URLEncoder.encode('${rabbit.vhost}', &quot;UTF-8&quot;)]/${rabbit.responsequeue}" method="PUT" doc:name="Create queue"/>
+        <until-successful maxRetries="50" millisBetweenRetries="5000" synchronous="true" doc:name="Until Successful">
+            <http:request config-ref="RabbitMQAPI" path="/queues/#[java.net.URLEncoder.encode('${rabbit.vhost}', &quot;UTF-8&quot;)]/${rabbit.responsequeue}" method="PUT" doc:name="Create queue"/>
+        </until-successful>
         <dw:transform-message doc:name="Make response">
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
@@ -142,11 +144,13 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
         <byte-array-to-string-transformer doc:name="Byte Array to String"/>
         <set-variable variableName="type" value="response" doc:name="Set type"/>
         <scatter-gather doc:name="Scatter-Gather">
-            <amqp:outbound-endpoint queueName="${rabbit.responsequeue}" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="Publish response"/>
+            <until-successful maxRetries="50" millisBetweenRetries="5000" doc:name="Until Successful">
+                <amqp:outbound-endpoint queueName="${rabbit.responsequeue}" responseTimeout="10000" connector-ref="OutboundAMQPConnector" doc:name="Publish response"/>
+            </until-successful>
             <flow-ref name="esPost" doc:name="esPost"/>
         </scatter-gather>
         <set-payload value="#[&quot;&quot;]" doc:name="Set Payload"/>
-    </flow>
+    </sub-flow>
     <sub-flow name="esPost">
         <json:object-to-json-transformer doc:name="Object to JSON"/>
         <dw:transform-message doc:name="Transform Message">
