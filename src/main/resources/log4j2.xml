@@ -35,7 +35,7 @@
         <!-- Reduce startup noise -->
         <AsyncLogger name="org.springframework.beans.factory" level="WARN"/>
         
-        <AsyncLogger name="org.mule.transport.amqp" level="DEBUG"/>
+        <AsyncLogger name="org.mule.transport.amqp" level="WARN"/>
         
 
         <!-- Mule classes -->
