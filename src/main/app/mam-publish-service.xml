@@ -88,12 +88,13 @@ http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mul
                         <expression-component doc:name="Do nothing"><![CDATA[// Do nothing]]></expression-component>
                     </when>
                     <otherwise>
-                        <expression-component doc:name="Expression"><![CDATA[throw new org.mule.module.http.internal.request.ResponseValidatorException("Response code " + message.inboundProperties.'http.status' + " mapped as failure. Message payload is of type: BufferInputStream");]]></expression-component>
+                        <scripting:transformer doc:name="Script">
+                            <scripting:script engine="Groovy"><![CDATA[throw new java.lang.Exception("Received response code " + message.getInboundProperty('http.status') + ".");]]></scripting:script>
+                        </scripting:transformer>
                     </otherwise>
                 </choice>
             </otherwise>
         </choice>
-        <logger level="INFO" doc:name="Logger"/>
         <logger message="Successfully published #[flowVars.fragment_id]" level="INFO" doc:name="Successfully published fragment_id"/>
     </sub-flow>
     <sub-flow name="checkIfPublishedSubFlow">
@@ -156,6 +157,6 @@ otherwise payload.isInIngestSpace]]></dw:set-payload>
 }]]></dw:set-payload>
         </dw:transform-message>
         <byte-array-to-string-transformer doc:name="Byte Array to String"/>
-        <http:request config-ref="ES" path="/${es.index}/debug" method="POST" doc:name="POST to ES"/>
+        <http:request config-ref="ES" path="/${es.index}-#[server.dateTime.format('yyyy.MM')]/debug" method="POST" doc:name="POST to ES"/>
     </sub-flow>
 </mule>
