@@ -12,7 +12,7 @@ On RabbitMQ, publish a message in the following format:
 
 ### Request
 
-```
+```json
 {
     "correlation_id": "abc123",
     "fragment_id": "9a3cb...acec50",
@@ -25,7 +25,7 @@ the following:
 
 ### Response: success
 
-```
+```json
 {
     "correlation_id": "abc123",
     "fragment_id": "9a3cb...acec50",
@@ -36,7 +36,7 @@ the following:
 
 ### Response: failed
 
-```
+```json
 {
     "correlation_id": "abc123",
     "fragment_id": "9a3cb...acec50",
