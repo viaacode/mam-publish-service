@@ -1,5 +1,5 @@
-staging.properties
-production.properties
+*.properties
+*.y[a]?ml
 catalog
 mappings
 src/main/app/mule-app.properties
