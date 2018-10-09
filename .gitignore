@@ -1,5 +1,6 @@
 *.properties
-*.y[a]?ml
+*.yml
+*.yaml
 catalog
 mappings
 src/main/app/mule-app.properties
